@@ -60,7 +60,7 @@ uint8_t promiscuousMode = 0;
 unsigned long millis_current;
 
 // freqBand must be selected from 315, 433, 868, 915
-void rfm69_init(uint16_t freqBand, uint8_t nodeID, uint8_t networkID)
+void rfm69_init(uint16_t freqBand, uint8_t nodeID)
 {
     const uint8_t CONFIG[][2] =
     {
@@ -98,7 +98,7 @@ void rfm69_init(uint16_t freqBand, uint8_t nodeID, uint8_t networkID)
         ///* 0x2D */ { REG_PREAMBLELSB, RF_PREAMBLESIZE_LSB_VALUE } // default 3 preamble bytes 0xAAAAAA
         /* 0x2E */ { REG_SYNCCONFIG, RF_SYNC_ON | RF_SYNC_FIFOFILL_AUTO | RF_SYNC_SIZE_2 | RF_SYNC_TOL_0 },
         /* 0x2F */ { REG_SYNCVALUE1, 0x2D },      // attempt to make this compatible with sync1 byte of RFM12B lib
-        /* 0x30 */ { REG_SYNCVALUE2, networkID }, // NETWORK ID
+        /* 0x30 */ //{ REG_SYNCVALUE2, networkID }, // Disable nwtwork ID mechanic
         /* 0x37 */ { REG_PACKETCONFIG1, RF_PACKET1_FORMAT_VARIABLE | RF_PACKET1_DCFREE_OFF | RF_PACKET1_CRC_ON | RF_PACKET1_CRCAUTOCLEAR_ON | RF_PACKET1_ADRSFILTERING_OFF },
         /* 0x38 */ { REG_PAYLOADLENGTH, 66 }, // in variable length mode: the max frame size, not used in TX
         ///* 0x39 */ { REG_NODEADRS, nodeID }, // turned off because we're not using address filtering
@@ -116,15 +116,6 @@ void rfm69_init(uint16_t freqBand, uint8_t nodeID, uint8_t networkID)
     INT_DDR &= ~(1<<INT_PIN_n);  // setting interrupt pin input. no problem if not given
     INT_PORT &= ~(1<<INT_PIN_n); // setting pull down. because rising will cause interrupt. external pull down is needed.
     
-    while (readReg(REG_SYNCVALUE1) != 0xaa)
-    {
-        writeReg(REG_SYNCVALUE1, 0xaa);
-    }
-
-    while (readReg(REG_SYNCVALUE1) != 0x55)
-    {
-        writeReg(REG_SYNCVALUE1, 0x55);
-    }
 	uint8_t i;
     for (i = 0; CONFIG[i][0] != 255; i++)
         writeReg(CONFIG[i][0], CONFIG[i][1]);
@@ -146,7 +137,6 @@ void rfm69_init(uint16_t freqBand, uint8_t nodeID, uint8_t networkID)
     inISR = 0;
     address = nodeID;
     setAddress(address);            // setting this node id
-    setNetwork(networkID);
     sei();
 }
 
@@ -154,12 +144,6 @@ void rfm69_init(uint16_t freqBand, uint8_t nodeID, uint8_t networkID)
 void setAddress(uint8_t addr)
 {
     writeReg(REG_NODEADRS, addr);
-}
-
-// set network address
-void setNetwork(uint8_t networkID)
-{
-    writeReg(REG_SYNCVALUE2, networkID);
 }
 
 uint8_t canSend()
@@ -318,19 +302,12 @@ void sendFrame(uint8_t toAddress, const void* buffer, uint8_t bufferSize)
     if (bufferSize > RF69_MAX_DATA_LEN)
         bufferSize = RF69_MAX_DATA_LEN;
 
-    // control byte
-    uint8_t CTLbyte = 0x00;
-	
-	if (toAddress > 0xFF) CTLbyte |= (toAddress & 0x300) >> 6; //assign last 2 bits of address if > 255
-    if (address > 0xFF) CTLbyte |= (address & 0x300) >> 8;   //assign last 2 bits of address if > 255
-
     // write to FIFO
     select(); //enable data transfer
     spi_fast_shift(REG_FIFO | 0x80);
-    spi_fast_shift(bufferSize + 3);
+    spi_fast_shift(bufferSize + 2);
     spi_fast_shift(toAddress);
     spi_fast_shift(address);
-    spi_fast_shift(CTLbyte);
 	uint8_t i;
     for (i = 0; i < bufferSize; i++)
         spi_fast_shift(((uint8_t*) buffer)[i]);
@@ -443,15 +420,9 @@ ISR(INT_VECT)
                 return;
             }
 
-            DATALEN = PAYLOADLEN - 3;
+            DATALEN = PAYLOADLEN - 2;
             SENDERID = spi_fast_shift(0);
-            uint8_t CTLbyte = spi_fast_shift(0);
-            CTLbyte = CTLbyte;
-
-            //ACK_RECEIVED = CTLbyte & RFM69_CTL_SENDACK; // extract ACK-received flag
-            //ACK_REQUESTED = CTLbyte & RFM69_CTL_REQACK; // extract ACK-requested flag
-            
-            //interruptHook(CTLbyte);                   // TWS: hook to derived class interrupt function
+           
             uint8_t i;
             for (i = 0; i < DATALEN; i++)
             {

@@ -86,9 +86,8 @@
 extern volatile uint8_t DATA[RF69_MAX_DATA_LEN+1];  // RX/TX payload buffer, including end of string NULL char
 
 // Function Declerations
-void rfm69_init(uint16_t freqBand, uint8_t nodeID, uint8_t networkID);
+void rfm69_init(uint16_t freqBand, uint8_t nodeID);
 void setAddress(uint8_t addr);
-void setNetwork(uint8_t networkID);
 uint8_t canSend();
 void send(uint8_t toAddress, const void* buffer, uint8_t bufferSize);
 void receiveBegin();
