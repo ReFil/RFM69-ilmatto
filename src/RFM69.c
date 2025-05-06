@@ -54,13 +54,11 @@ volatile uint8_t mode = RF69_MODE_STANDBY; // should be protected?
 volatile uint8_t inISR = 0; 
 volatile uint8_t DATA[RF69_MAX_DATA_LEN+1];  // RX/TX payload buffer, including end of string NULL char
 uint8_t isRFM69HW = 1;                     // if RFM69HW model matches high power enable possible
-uint8_t address;                           //nodeID
 uint8_t powerLevel = 31;
-uint8_t promiscuousMode = 0;
 unsigned long millis_current;
 
 // freqBand must be selected from 315, 433, 868, 915
-void rfm69_init(uint16_t freqBand, uint8_t nodeID)
+void rfm69_init(uint16_t freqBand)
 {
     const uint8_t CONFIG[][2] =
     {
@@ -135,15 +133,7 @@ void rfm69_init(uint16_t freqBand, uint8_t nodeID)
     PCICR |= (1<<PCIEn);
     #endif
     inISR = 0;
-    address = nodeID;
-    setAddress(address);            // setting this node id
     sei();
-}
-
-// set this node's address
-void setAddress(uint8_t addr)
-{
-    writeReg(REG_NODEADRS, addr);
 }
 
 uint8_t canSend()
@@ -157,12 +147,12 @@ uint8_t canSend()
 }
 
 // Transmit data
-void send(uint8_t toAddress, const void* buffer, uint8_t bufferSize)
+void send(const void* buffer, uint8_t bufferSize)
 {
     writeReg(REG_PACKETCONFIG2, (readReg(REG_PACKETCONFIG2) & 0xFB) | RF_PACKET2_RXRESTART); // avoid RX deadlocks
     millis_current = millis();
     while (!canSend() && millis() - millis_current < RF69_CSMA_LIMIT_MS) receiveDone();
-    sendFrame(toAddress, buffer, bufferSize);
+    sendFrame(buffer, bufferSize);
 }
 
 
@@ -294,7 +284,7 @@ int16_t readRSSI(uint8_t forceTrigger)
 }
 
 // internal function
-void sendFrame(uint8_t toAddress, const void* buffer, uint8_t bufferSize)
+void sendFrame(const void* buffer, uint8_t bufferSize)
 {
     setMode(RF69_MODE_STANDBY); // turn off receiver to prevent reception while filling fifo
     while ((readReg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00); // wait for ModeReady
@@ -305,9 +295,7 @@ void sendFrame(uint8_t toAddress, const void* buffer, uint8_t bufferSize)
     // write to FIFO
     select(); //enable data transfer
     spi_fast_shift(REG_FIFO | 0x80);
-    spi_fast_shift(bufferSize + 2);
-    spi_fast_shift(toAddress);
-    spi_fast_shift(address);
+    spi_fast_shift(bufferSize);
 	uint8_t i;
     for (i = 0; i < bufferSize; i++)
         spi_fast_shift(((uint8_t*) buffer)[i]);
@@ -368,17 +356,6 @@ void receiveBegin()
     setMode(RF69_MODE_RX);
 }
 
-// 1  = disable filtering to capture all frames on network
-// 0 = enable node/broadcast filtering to capture only frames sent to this/broadcast address
-void promiscuous(uint8_t onOff)
-{
-    promiscuousMode = onOff;
-    if(promiscuousMode==0)
-        writeReg(REG_PACKETCONFIG1, (readReg(REG_PACKETCONFIG1) & 0xF9) | RF_PACKET1_ADRSFILTERING_NODEBROADCAST);
-    else
-        writeReg(REG_PACKETCONFIG1, (readReg(REG_PACKETCONFIG1) & 0xF9) | RF_PACKET1_ADRSFILTERING_OFF);    
-}
-
 // Only reenable interrupts if we're not being called from the ISR
 void maybeInterrupts()
 {
@@ -410,19 +387,7 @@ ISR(INT_VECT)
             spi_fast_shift(REG_FIFO & 0x7F);
             PAYLOADLEN = spi_fast_shift(0);
             if(PAYLOADLEN>66) PAYLOADLEN=66;
-            TARGETID = spi_fast_shift(0);
-            if(!(promiscuousMode || TARGETID == address || TARGETID == RF69_BROADCAST_ADDR) // match this node's address, or broadcast address or anything in promiscuous mode
-            || PAYLOADLEN < 3) // address situation could receive packets that are malformed and don't fit this libraries extra fields
-            {
-                PAYLOADLEN = 0;
-                unselect();
-                receiveBegin();
-                return;
-            }
-
-            DATALEN = PAYLOADLEN - 2;
-            SENDERID = spi_fast_shift(0);
-           
+            DATALEN = PAYLOADLEN;
             uint8_t i;
             for (i = 0; i < DATALEN; i++)
             {

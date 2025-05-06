@@ -86,10 +86,10 @@
 extern volatile uint8_t DATA[RF69_MAX_DATA_LEN+1];  // RX/TX payload buffer, including end of string NULL char
 
 // Function Declerations
-void rfm69_init(uint16_t freqBand, uint8_t nodeID);
+void rfm69_init(uint16_t freqBand);
 void setAddress(uint8_t addr);
 uint8_t canSend();
-void send(uint8_t toAddress, const void* buffer, uint8_t bufferSize);
+void send( const void* buffer, uint8_t bufferSize);
 void receiveBegin();
 uint8_t receiveDone();
 uint32_t getFrequency();
@@ -100,10 +100,9 @@ void sleep();
 void rcCalibration();                         // calibrate the internal RC oscillator for use in wide temperature variations - see datasheet section [4.3.5. RC Timer Accuracy]
 uint8_t readReg(uint8_t addr);
 void writeReg(uint8_t addr, uint8_t val);
-void sendFrame(uint8_t toAddress, const void* buffer, uint8_t size);
+void sendFrame(const void* buffer, uint8_t size);
 void setMode(uint8_t mode);
 void setHighPowerRegs(uint8_t onOff);
-void promiscuous(uint8_t onOff);
 void maybeInterrupts();
 void select();
 void unselect();
