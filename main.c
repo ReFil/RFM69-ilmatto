@@ -13,7 +13,7 @@ int main(void)
 	millis_init(); // Required for RFM69
 	init_debug_uart0();
 	rfm69_init(433);    //init the RFM69 
-	setPowerLevel(25); //set to maximum transmit power
+	setPowerLevel(25); //set transmit power
 	char testing[] = "Test string";
 	while(1)
    { 

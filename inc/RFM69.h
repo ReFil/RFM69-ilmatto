@@ -65,7 +65,7 @@
 
 
 
-#define RF69_MAX_DATA_LEN       61  // to take advantage of the built in AES/CRC we want to limit the frame size to the internal FIFO size (66 bytes - 3 bytes overhead - 2 bytes crc)
+#define RF69_MAX_DATA_LEN       61  // we want to limit the frame size to the internal FIFO size (66 bytes - 3 bytes overhead - 2 bytes crc)
 #define CSMA_LIMIT             -90 // upper RX signal sensitivity threshold in dBm for carrier sense access
 #define RF69_MODE_SLEEP         0   // XTAL OFF
 #define RF69_MODE_STANDBY       1   // XTAL ON
@@ -78,9 +78,6 @@
 #define RF69_CSMA_LIMIT_MS 1000
 #define RF69_TX_LIMIT_MS   1000
 #define RF69_FSTEP    61.03515625   // == FXOSC / 2^19 = 32MHz / 2^19 (p13 in datasheet) / FXOSC = module crystal oscillator frequency 
-// TWS: define CTLbyte bits
-//#define RFM69_CTL_SENDACK   0x80
-//#define RFM69_CTL_REQACK    0x40
 
 // Global Variables
 extern volatile uint8_t DATA[RF69_MAX_DATA_LEN+1];  // RX/TX payload buffer, including end of string NULL char

@@ -44,11 +44,7 @@
 
 
 volatile uint8_t DATALEN;
-volatile uint8_t SENDERID;
-volatile uint8_t TARGETID;                 // should match _address
 volatile uint8_t PAYLOADLEN;
-volatile uint8_t ACK_REQUESTED;
-volatile uint8_t ACK_RECEIVED;             // should be polled immediately after sending a packet with ACK request
 volatile int16_t RSSI;                     // most accurate RSSI during reception (closest to the reception)
 volatile uint8_t mode = RF69_MODE_STANDBY; // should be protected?
 volatile uint8_t inISR = 0; 
@@ -114,16 +110,19 @@ void rfm69_init(uint16_t freqBand)
     INT_DDR &= ~(1<<INT_PIN_n);  // setting interrupt pin input. no problem if not given
     INT_PORT &= ~(1<<INT_PIN_n); // setting pull down. because rising will cause interrupt. external pull down is needed.
     
-	uint8_t i;
-    for (i = 0; CONFIG[i][0] != 255; i++)
+    // Write config data
+    for (uint8_t i = 0; CONFIG[i][0] != 255; i++)
         writeReg(CONFIG[i][0], CONFIG[i][1]);
 
     // Encryption is persistent between resets and can trip you up during debugging.
     // Disable it during initialization so we always start from a known state.
     setMode(RF69_MODE_STANDBY);
-    writeReg(REG_PACKETCONFIG2, (readReg(REG_PACKETCONFIG2) & 0xFE) | 0);
+    writeReg(REG_PACKETCONFIG2, (readReg(REG_PACKETCONFIG2) & 0xFE) | RF_PACKET2_AES_OFF);
     
+    // Wait for module to come online 
     while ((readReg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00);
+
+    // Enable interrupt
     #ifdef EXTERNAL_INTERRUPT
     EICRn |= (1<<ISCn1)|(1<<ISCn0); // setting INTn rising. details datasheet p91. must change with interrupt pin.
     EIMSK |= 1<<INTn;               // enable INTn
@@ -138,7 +137,10 @@ void rfm69_init(uint16_t freqBand)
 
 uint8_t canSend()
 {
-    if (mode == RF69_MODE_RX && PAYLOADLEN == 0 && readRSSI(0) < CSMA_LIMIT) // if signal stronger than -100dBm is detected assume channel activity
+    // Checks if signal strength higher than -90dBm
+    // Checks if reciever is in receive mode. Note this won't work if receieveDone hasn't been called since the last time this was run
+    // Checks if receive buffer empty
+    if (mode == RF69_MODE_RX && PAYLOADLEN == 0 && readRSSI(0) < CSMA_LIMIT) 
     {
         setMode(RF69_MODE_STANDBY);
         return 1;
@@ -150,8 +152,10 @@ uint8_t canSend()
 void send(const void* buffer, uint8_t bufferSize)
 {
     writeReg(REG_PACKETCONFIG2, (readReg(REG_PACKETCONFIG2) & 0xFB) | RF_PACKET2_RXRESTART); // avoid RX deadlocks
+    // Check CSMA timelimit and cansend
     millis_current = millis();
     while (!canSend() && millis() - millis_current < RF69_CSMA_LIMIT_MS) receiveDone();
+    // Send data out
     sendFrame(buffer, bufferSize);
 }
 
@@ -289,13 +293,16 @@ void sendFrame(const void* buffer, uint8_t bufferSize)
     setMode(RF69_MODE_STANDBY); // turn off receiver to prevent reception while filling fifo
     while ((readReg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00); // wait for ModeReady
     //writeReg(REG_DIOMAPPING1, RF_DIOMAPPING1_DIO0_00); // DIO0 is "Packet Sent"
+    // limit buffer size to max bufsize
     if (bufferSize > RF69_MAX_DATA_LEN)
         bufferSize = RF69_MAX_DATA_LEN;
 
     // write to FIFO
     select(); //enable data transfer
     spi_fast_shift(REG_FIFO | 0x80);
+    // Send length into FIFO
     spi_fast_shift(bufferSize);
+    // Send data into FIFO
 	uint8_t i;
     for (i = 0; i < bufferSize; i++)
         spi_fast_shift(((uint8_t*) buffer)[i]);
@@ -304,11 +311,6 @@ void sendFrame(const void* buffer, uint8_t bufferSize)
 
     // no need to wait for transmit mode to be ready since its handled by the radio
     setMode(RF69_MODE_TX);
-    //millis_current = millis();
-    //_delay_ms(500);
-    // wait for DIO to high
-    // for PINE5
-    //while (bit_is_clear(INT_PIN, INT_pin_num) && millis() - millis_current < RF69_TX_LIMIT_MS);
 	while ((readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_PACKETSENT) == 0x00); // wait for PacketSent
 	setMode(RF69_MODE_STANDBY);
 }
@@ -344,11 +346,7 @@ uint8_t receiveDone()
 void receiveBegin()
 {
     DATALEN = 0;
-    SENDERID = 0;
-    TARGETID = 0;
     PAYLOADLEN = 0;
-    ACK_REQUESTED = 0;
-    ACK_RECEIVED = 0;
     RSSI = 0;
     if (readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_PAYLOADREADY)
     writeReg(REG_PACKETCONFIG2, (readReg(REG_PACKETCONFIG2) & 0xFB) | RF_PACKET2_RXRESTART); // avoid RX deadlocks
@@ -380,13 +378,19 @@ void unselect()
 ISR(INT_VECT)
 {
     inISR = 1;
+    // If we're in the receive mode and there's data ready to be read out
     if (mode == RF69_MODE_RX && (readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_PAYLOADREADY))
         {
+            // Turn off receive mode so we dont get more data in whilst reading out
             setMode(RF69_MODE_STANDBY);
             select();
             spi_fast_shift(REG_FIFO & 0x7F);
+            // Read out length
             PAYLOADLEN = spi_fast_shift(0);
+            // Cap length at max FIFO size
             if(PAYLOADLEN>66) PAYLOADLEN=66;
+
+            // Read data into DATA
             DATALEN = PAYLOADLEN;
             uint8_t i;
             for (i = 0; i < DATALEN; i++)
@@ -395,6 +399,7 @@ ISR(INT_VECT)
             }
             if (DATALEN < RF69_MAX_DATA_LEN) DATA[DATALEN] = 0; // add null at end of string
             unselect();
+            // Enable receive mode again
             setMode(RF69_MODE_RX);
         }
     RSSI = readRSSI(0);
