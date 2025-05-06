@@ -95,7 +95,6 @@ void receiveBegin();
 uint8_t receiveDone();
 uint32_t getFrequency();
 void setFrequency(uint32_t freqHz);
-void encrypt(const char* key);
 int16_t readRSSI(uint8_t forceTrigger);
 void setPowerLevel(uint8_t level);            // reduce/increase transmit power level
 void sleep();

@@ -131,9 +131,9 @@ void rfm69_init(uint16_t freqBand, uint8_t nodeID, uint8_t networkID)
 
     // Encryption is persistent between resets and can trip you up during debugging.
     // Disable it during initialization so we always start from a known state.
-    encrypt(0);
     setMode(RF69_MODE_STANDBY);
-
+    writeReg(REG_PACKETCONFIG2, (readReg(REG_PACKETCONFIG2) & 0xFE) | 0);
+    
     while ((readReg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00);
     #ifdef EXTERNAL_INTERRUPT
     EICRn |= (1<<ISCn1)|(1<<ISCn0); // setting INTn rising. details datasheet p91. must change with interrupt pin.
@@ -243,24 +243,6 @@ void writeReg(uint8_t addr, uint8_t value)
     spi_fast_shift(addr | 0x80);
     spi_fast_shift(value);
     unselect();
-}
-
-// To enable encryption: radio.encrypt("ABCDEFGHIJKLMNOP");
-// To disable encryption: encrypt(null) or encrypt(0)
-// KEY HAS TO BE 16 bytes !!!
-void encrypt(const char* key) 
-{
-    setMode(RF69_MODE_STANDBY);
-    if (key != 0)
-    {
-        select();
-        spi_fast_shift(REG_AESKEY1 | 0x80);
-		uint8_t i;
-        for (i = 0; i < 16; i++)
-            spi_fast_shift(key[i]);
-        unselect();
-    }
-    writeReg(REG_PACKETCONFIG2, (readReg(REG_PACKETCONFIG2) & 0xFE) | (key ? 1:0));
 }
 
 void setMode(uint8_t newMode)
