@@ -35,19 +35,16 @@ Note the make build system allows all the header files in the inc folder to be d
 
 ## Function Description: ##
 
-1.	**rfm69_init(*uint16_t freqBand, uint8_t nodeID, uint8_t networkID*):** Initializes rfm69 module. This function is called at the beginning of the program. Initializes IDs, modes etc. It takes three parameters. First one freqBand. You have to choose among 315, 433, 868 and 915. These specifies frequency in MHz. nodeID is analogues to device ID. Each RF module will have unique nodeID. Value must be within 0 to 255. Then comes networkID. Say, a system has 5 rf modules to communicate with each other. All the modules must be in same networkID . networkID value range 0~255.
-2.	**setAddress(*uint8_t addr*):** Sets nodeID.
-3.	**setNetwork(*uint8_t networkID*):** Sets networkID.
+1.	**rfm69_init(*uint16_t freqBand*):** Initializes rfm69 module. This function is called at the beginning of the program. Initializes IDs, modes etc. It takes one parameters, freqBand. You have to choose among 315, 433, 868 and 915. These specifies frequency in MHz. 
+2.	**setChannel(*uint8_t channel*):** Sets radio channel, set between 0 and 31. each channel represents a 100KHz band.
 4.  **canSend():** Returns a 1 or 0 depending on if the channel is free to send data.
-5.	**send(*uint8_t toAddress, const void\* buffer, uint8_t bufferSize*):** Transmits data to another node. First argument is toAddress that is address off receiver node/gateway. In buffer you can put any kind of buffer like string or array etc.
+5.	**send(*const void\* buffer, uint8_t bufferSize*):** Transmits data to the channel. In buffer you can put any kind of buffer like string or array etc.
 6.	**receiveDone():**  Returns 1 if any data is present in receive buffer.
 7.	**getFrequency():** Gets frequency Band.
 8.	**setFrequency(*uint32_t freqHz*):** Sets frequency band. You can set frequency other than 315, 433, 868, 915 MHz through this function. Unit is Hz i.e 433000000. 
-9.	**encrypt(*const char\* key*):** All device need same encryption key. And length must be 16. If you need no encryption just put 0 in argument. 
-10.	**readRSSI(*uint8_t forceTrigger=0*):** You want to know received signal strength? :D
+10.	**readRSSI(*uint8_t forceTrigger=0*):** Return received signal strength indicator
 11.	**setPowerLevel(*uint8_t level*):** Sets transmit power. Range 0~31.
 12.	**rcCalibration():** Calibrate the internal RC oscillator for use in wide temperature variations - see datasheet section 4.3.5. RC Timer Accuracy. Not tested yet.
-13.	**promiscuous(*uint8_t onOff*):** 1 or 0. If on, module receives data indiscriminately. In another word, it receives all data in network when set to 1. (N.B. This might be broken, should be set to 1 regardless for this lab)
 
 </br>
 
@@ -55,15 +52,15 @@ Note the make build system allows all the header files in the inc folder to be d
 #### Transmit data: ####
 
 ```
-rfm69_init(freq, nodeID, networkID)
+rfm69_init(freq)
 setPowerLevel(0~31)
-send(toNodeID, buffer, bufferLen, 0 or 1 )
+send(buffer, bufferLen)
 ```
 
 #### Receive data: ####
 
 ```
-rfm69_init(freq, nodeID, networkID)
+rfm69_init(freq)
 setPowerLevel(0~31)
 mainloop
     if receiveDone() then
