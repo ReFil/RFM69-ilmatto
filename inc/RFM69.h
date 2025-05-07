@@ -78,6 +78,8 @@
 #define RF69_CSMA_LIMIT_MS 1000
 #define RF69_TX_LIMIT_MS   1000
 #define RF69_FSTEP    61.03515625   // == FXOSC / 2^19 = 32MHz / 2^19 (p13 in datasheet) / FXOSC = module crystal oscillator frequency 
+#define RF69_CHANNEL_STEP       100000 // 50KHz between channels
+#define RF69_CHANNEL_NUM        31 // 
 
 // Global Variables
 extern volatile uint8_t DATA[RF69_MAX_DATA_LEN+1];  // RX/TX payload buffer, including end of string NULL char
@@ -104,6 +106,7 @@ void maybeInterrupts();
 void select();
 void unselect();
 uint8_t receiveDone();
+void setChannel(uint8_t channel);
 
 #endif
 

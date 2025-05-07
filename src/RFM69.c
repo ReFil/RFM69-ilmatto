@@ -187,6 +187,16 @@ uint32_t getFrequency()
     return RF69_FSTEP * (((uint32_t) readReg(REG_FRFMSB) << 16) + ((uint16_t) readReg(REG_FRFMID) << 8) + readReg(REG_FRFLSB));
 }
 
+void setChannel(uint8_t channel) {
+    if(channel > RF69_CHANNEL_NUM)
+        return;
+    uint32_t freq = (433000000 + (channel * RF69_CHANNEL_STEP));
+    printf("Setting freq to %lu", freq);
+    setFrequency(freq);
+    return;
+
+}
+
 // set the frequency (in Hz)
 void setFrequency(uint32_t freqHz)
 {
