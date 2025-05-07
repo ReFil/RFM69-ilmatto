@@ -152,9 +152,6 @@ uint8_t canSend()
 void send(const void* buffer, uint8_t bufferSize)
 {
     writeReg(REG_PACKETCONFIG2, (readReg(REG_PACKETCONFIG2) & 0xFB) | RF_PACKET2_RXRESTART); // avoid RX deadlocks
-    // Check CSMA timelimit and cansend
-    millis_current = millis();
-    while (!canSend() && millis() - millis_current < RF69_CSMA_LIMIT_MS) receiveDone();
     // Send data out
     sendFrame(buffer, bufferSize);
 }
