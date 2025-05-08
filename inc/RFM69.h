@@ -30,6 +30,8 @@
 // Modified by Willow Herring
 // **********************************************************************************
 
+#pragma once
+
 #include <avr/io.h>
 
 #ifndef RFM69_H

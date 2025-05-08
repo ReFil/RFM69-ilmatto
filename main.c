@@ -7,10 +7,12 @@
 #include "RFM69registers.h"
 #include "uart.h"
 #include "millis.h"
+#include "xorrand.h"
 
 int main(void)
 {
 	millis_init(); // Required for RFM69
+	rand_init(); // Initialise the RNG
 	init_debug_uart0();
 	rfm69_init(433);    //init the RFM69 
 	setPowerLevel(24); //set transmit power
@@ -22,6 +24,7 @@ int main(void)
 		{
 		send((const void*)&testing, sizeof(testing));
 		printf("Sending\n");
+		printf("Random %lu\n", get_rand());
 		}
 	if(receiveDone())
 		printf("Received %s\n", DATA);

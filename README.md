@@ -71,8 +71,9 @@ mainloop
 
 If you wish to use the UART pins on PD0 (RX) and PD1 (TX) for debugging and communication purposes, include "uart.h" in `main.c` and be sure to call `init_debug_uart0();` at the start of your program. After that you can use [printf](https://www.geeksforgeeks.org/printf-in-c/) and [scanf](https://www.geeksforgeeks.org/scanf-in-c/) to handle input and output.
 
-If you wish to get the system uptime in milliseconds, include "millis.h" in `main.c`. The millisecond counter is already initialised by the RFM69 subsystem, so no additional initialisation steps are needed. The system uptime can be returned from `millis();` as an unsigned long (uint32_t).
+If you wish to get the system uptime in milliseconds, include "millis.h" in `main.c`. The millisecond counter is initialised by the `millis_init()` function in main.c, so no additional initialisation steps are needed. The system uptime can be returned from `millis();` as an unsigned long (uint32_t).
 
+The "xorrand.h" header file provides a farly robust PRNG implementation, it is initialised by the `rand_init()` function using noise in the lower 4 bits of the ADC0 channel. This should not preclude the use of ADC0 for other purposes. The unsigned long random number can be returned from `get_rand()`;
 
 ## Note
 The millisecond timer occupies Timer 1 on the Il matto and thus it is unavailable for your program. The RFM69 code occupies PCINT1.

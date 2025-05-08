@@ -6,7 +6,7 @@ INC = inc
 OBJDIR = obj
 
 # Source files (If you're adding extra source files be sure to add them in here)
-SRC = main.c src/millis.c src/RFM69.c src/spi.c src/uart.c
+SRC = main.c src/millis.c src/RFM69.c src/spi.c src/uart.c src/xorrand.c
 
 # Compiler and linker flags. Note F_CPU is already defined here!
 CFLAGS = -mmcu=atmega644p -Os -Wall -DF_CPU=12000000UL -I$(INC) -std=c99

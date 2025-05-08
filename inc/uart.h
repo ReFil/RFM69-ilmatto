@@ -6,6 +6,8 @@
  *          to initialise redirection of stdout, stderr and stdin to UART0.
  */
 
+#pragma once
+
 #define __ASSERT_USE_STDERR
 #include <assert.h>
 #include <stdio.h>

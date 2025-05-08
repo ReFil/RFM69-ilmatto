@@ -31,6 +31,9 @@
 // **********************************************************************************
 // RFM69/SX1231 Internal registers addresses
 //**************************************************
+
+#pragma once
+
 #define REG_FIFO          0x00
 #define REG_OPMODE        0x01
 #define REG_DATAMODUL     0x02
