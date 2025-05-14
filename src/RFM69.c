@@ -188,7 +188,8 @@ void setChannel(uint8_t channel) {
     if(channel > RF69_CHANNEL_NUM)
         return;
     uint32_t freq = (433000000 + (channel * RF69_CHANNEL_STEP));
-    printf("Setting freq to %lu", freq);
+    // If this line is uncommented on the Zepler PCs it wont build due to legacy libgcc
+    //printf("Setting freq to %lu", freq);
     setFrequency(freq);
     return;
 
